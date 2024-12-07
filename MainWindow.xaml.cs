@@ -129,6 +129,8 @@ namespace ChromaticityDiagram
 
         private void spectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.OriginalSource is ControlPoint) return;
+
             Point point = e.GetPosition(spectrumCanvas);
             bool outOfBounds = point.X < Bezier.DisplayBegin.x
                 || point.X > Bezier.DisplayEnd.x
