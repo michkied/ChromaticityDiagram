@@ -81,15 +81,15 @@ namespace ChromaticityDiagram
             int index = ControlPoints.IndexOf(control);
             if (index == 0)
             {
-                return (DisplayBegin.x , ControlPoints[1].DisplayPoint.X);
+                return (DisplayBegin.x , ControlPoints[1].DisplayPoint.X - 1);
             }
             else if (index == ControlPoints.Count - 1)
             {
-                return (ControlPoints[^2].DisplayPoint.X, DisplayEnd.x);
+                return (ControlPoints[^2].DisplayPoint.X + 1, DisplayEnd.x);
             }
             else
             {
-                return (ControlPoints[index - 1].DisplayPoint.X, ControlPoints[index + 1].DisplayPoint.X);
+                return (ControlPoints[index - 1].DisplayPoint.X + 1, ControlPoints[index + 1].DisplayPoint.X - 1);
             }
         }
 
@@ -112,9 +112,10 @@ namespace ChromaticityDiagram
             {
                 GeometryGroup geometryGroup = new();
 
-                Point lastPoint = ControlPoints[0].DisplayPoint;
+                Point lastDisplayPoint = ControlPoints[0].DisplayPoint;
+                Point lastPoint = ControlPoints[0].Point;
 
-                double d = 1.0 / 5.0;
+                double d = 1.0 / 1000.0;
                 double CIE_X = 0, CIE_Y = 0, CIE_Z = 0;
 
                 for (double t = d; t < 1; t += d)
@@ -133,14 +134,16 @@ namespace ChromaticityDiagram
                         y += coeff * ControlPoints[i].Point.Y; 
                     }
 
-                    CIE_X += y * _data[(int)Math.Round(x)].x * (x - lastPoint.X);
-                    CIE_Y += y * _data[(int)Math.Round(x)].y * (x - lastPoint.X);
-                    CIE_Z += y * _data[(int)Math.Round(x)].z * (x - lastPoint.X);
+                    double diff = x - lastPoint.X;
 
-                    Point newPoint = new Point(displayX, displayY);
-                    //geometryGroup.Children.Add(new LineGeometry(newPoint, lastPoint));
-                    geometryGroup.Children.Add(new EllipseGeometry(newPoint, 1, 1));
-                    lastPoint = newPoint;
+                    CIE_X += y * _data[(int)Math.Round(x)].x * diff;
+                    CIE_Y += y * _data[(int)Math.Round(x)].y * diff;
+                    CIE_Z += y * _data[(int)Math.Round(x)].z * diff;
+
+                    Point newDisplayPoint = new Point(displayX, displayY);
+                    geometryGroup.Children.Add(new LineGeometry(newDisplayPoint, lastDisplayPoint));
+                    lastDisplayPoint = newDisplayPoint;
+                    lastPoint = new Point(x, y);
                 }
 
                 double Px = ControlPoints[^1].Point.X;
@@ -151,7 +154,7 @@ namespace ChromaticityDiagram
                 CIE_Coords = (CIE_X, CIE_Y, CIE_Z);
                 CIERecalculated?.Invoke(this, EventArgs.Empty);
 
-                geometryGroup.Children.Add(new LineGeometry(ControlPoints[^1].DisplayPoint, lastPoint));
+                geometryGroup.Children.Add(new LineGeometry(ControlPoints[^1].DisplayPoint, lastDisplayPoint));
 
                 return geometryGroup;
             }
