@@ -14,14 +14,14 @@ namespace ChromaticityDiagram
 {
     public partial class MainWindow : Window
     {
+        Diagram _diagram;
         Bezier _bezier;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            _bezier = new Bezier(spectrumCanvas);
-
+            Dictionary<int, (double x, double y, double z)> data = new();
             using (var file = new StreamReader($"../../../data.csv"))
             {
                 string? line = file.ReadLine();
@@ -29,11 +29,12 @@ namespace ChromaticityDiagram
                 {
                     if (line == "WL;X;Y;Z")
                     {
-                        line = file.ReadLine();
+                        line = file.ReadLine(); 
                         continue;
                     }
                     string[] parts = line.Split(';');
-                    if (int.Parse(parts[0]) > 700)
+                    int wl = int.Parse(parts[0]);
+                    if (wl < Bezier.Begin.y || wl > Bezier.End.x)
                     {
                         line = file.ReadLine();
                         continue;
@@ -41,104 +42,87 @@ namespace ChromaticityDiagram
                     double x = double.Parse(parts[1]);
                     double y = double.Parse(parts[2]);
                     double z = double.Parse(parts[3]);
-
-                    double x1 = x / (x + y + z);
-                    double y1 = y / (x + y + z);
-                    double z1 = z / (x + y + z);
-                    double x2 = x1 / y1;
-                    double y2 = 1;
-                    double z2 = z1 / y1;
-                    double r = x2 * 3.2406 + y2 * -1.5372 + z2 * -0.4986;
-                    double g = x2 * -0.9689 + y2 * 1.8758 + z2 * 0.0415;
-                    double b = x2 * 0.0557 + y2 * -0.2040 + z2 * 1.0570;
-                    //if (r > 0.0031308)
-                    //{
-                    //    r = 1.055 * Math.Pow(r, 1 / 2.4) - 0.055;
-                    //}
-                    //else
-                    //{
-                    //    r = 12.92 * r;
-                    //}
-                    //if (g > 0.0031308)
-                    //{
-                    //    g = 1.055 * Math.Pow(g, 1 / 2.4) - 0.055;
-                    //}
-                    //else
-                    //{
-                    //    g = 12.92 * g;
-                    //}
-                    //if (b > 0.0031308)
-                    //{
-                    //    b = 1.055 * Math.Pow(b, 1 / 2.4) - 0.055;
-                    //}
-                    //else
-                    //{
-                    //    b = 12.92 * b;
-                    //}
-                    r = Math.Max(0, Math.Min(1, r));
-                    g = Math.Max(0, Math.Min(1, g));
-                    b = Math.Max(0, Math.Min(1, b));
-                    Color color = Color.FromScRgb(1, (float)r, (float)g, (float)b);
-                    Ellipse rect = new Ellipse
-                    {
-                        Width = 7,
-                        Height = 7,
-                        Fill = new SolidColorBrush(color)
-                    };
-                    diagramCanvas.Children.Add(rect);
-                    var result = GetDisplayDiagramCoordinates(x1, y1);
-                    Canvas.SetLeft(rect, result.x);
-                    Canvas.SetTop(rect, result.y);
+                    data[wl] = (x, y, z);
                     line = file.ReadLine();
                 }
             }
 
-            spectrumCanvas.Children.Add(new Line
-            {
-                X1 = 40,
-                Y1 = 40,
-                X2 = 40,
-                Y2 = 440,
-                Stroke = Brushes.Black,
-                StrokeThickness = 3
-            });
-
-            spectrumCanvas.Children.Add(new Line
-            {
-                X1 = 40,
-                Y1 = 440,
-                X2 = 440,
-                Y2 = 440,
-                Stroke = Brushes.Black,
-                StrokeThickness = 3
-            });
+            _bezier = new Bezier(spectrumCanvas, data);
+            _diagram = new Diagram(diagramCanvas, _bezier, data);
 
             spectrumCanvas.Children.Add(_bezier);
-        }
-
-        private (double x, double y) GetDisplayDiagramCoordinates(double x, double y)
-        {
-            double h = Height;
-            double w = Width / 2;
-            (double x, double y) result;
-            result.x = x * 441 + 80;
-            result.y = 440 - y * 441 - 15;
-
-            return result;
+            spectrumCanvas.Children.Add(new BezierLines(_bezier));
+            DrawScales();
         }
 
         private void spectrumCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is ControlPoint) return;
 
-            Point point = e.GetPosition(spectrumCanvas);
-            bool outOfBounds = point.X < Bezier.DisplayBegin.x
-                || point.X > Bezier.DisplayEnd.x
-                || point.Y < Bezier.DisplayBegin.y
-                || point.Y > Bezier.DisplayEnd.y;
+            Point position = e.GetPosition(spectrumCanvas);
 
-            if (outOfBounds) return;
-            _bezier.AddControlPoint(point);
+            double resultX = position.X;
+            if (position.X < Bezier.DisplayBegin.x) resultX = Bezier.DisplayBegin.x;
+            else if (position.X > Bezier.DisplayEnd.x) resultX = Bezier.DisplayEnd.x;
+
+            double resultY = position.Y;
+            if (position.Y < Bezier.DisplayBegin.y) resultY = Bezier.DisplayBegin.y;
+            else if (position.Y > Bezier.DisplayEnd.y) resultY = Bezier.DisplayEnd.y;
+
+            _bezier.AddControlPoint(new Point(resultX, resultY));
+        }
+
+        private void DrawScales()
+        {
+            int numOfSteps = 9;
+            double length = 10;
+            double stepAX = (Bezier.DisplayEnd.x - Bezier.DisplayBegin.x) / numOfSteps;
+            double stepAY = (Bezier.DisplayEnd.y - Bezier.DisplayBegin.y) / numOfSteps;
+
+            for (int i = 0; i <= numOfSteps; i++) {
+
+                Line lineX = new Line
+                {
+                    X1 = i * stepAX + Bezier.DisplayBegin.x,
+                    Y1 = Bezier.DisplayEnd.y,
+                    X2 = i * stepAX + Bezier.DisplayBegin.x,
+                    Y2 = Bezier.DisplayEnd.y + length / 2,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1
+                };
+                Line lineY = new Line
+                {
+                    X1 = 40,
+                    Y1 = i * stepAY + Bezier.DisplayBegin.y,
+                    X2 = 40 - length / 2,
+                    Y2 = i * stepAY + Bezier.DisplayBegin.y,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1
+                };
+
+                TextBlock textX = new TextBlock
+                {
+                    Text = $"{Bezier.Begin.x + i * (Bezier.End.x - Bezier.Begin.x) / numOfSteps}",
+                    FontSize = 9,
+                };
+
+                TextBlock textY = new TextBlock
+                {
+                    Text = $"{(Bezier.Begin.y + i * (Bezier.End.y - Bezier.Begin.y) / numOfSteps).ToString("0.#")}",
+                    FontSize = 9,
+                };
+
+                spectrumCanvas.Children.Add(lineX);
+                spectrumCanvas.Children.Add(lineY);
+
+                spectrumCanvas.Children.Add(textX);
+                Canvas.SetLeft(textX, i * stepAX + Bezier.DisplayBegin.x - 8);
+                Canvas.SetTop(textX, Bezier.DisplayEnd.y + length / 2 + 5);
+
+                spectrumCanvas.Children.Add(textY);
+                Canvas.SetLeft(textY, 40 - length / 2 - 20);
+                Canvas.SetTop(textY, i * stepAY + Bezier.DisplayBegin.y - 5);
+            }
         }
     }
 }

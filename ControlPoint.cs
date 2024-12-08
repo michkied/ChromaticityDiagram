@@ -115,7 +115,7 @@ namespace ChromaticityDiagram
                 DisplayPoint = new Point(resultX, resultY);
                 Point = ConvertFromDisplayPoint(DisplayPoint);
                 InvalidateVisual();
-                _bezier.InvalidateVisual(); 
+                _bezier.Redraw(); 
             }
         }
 

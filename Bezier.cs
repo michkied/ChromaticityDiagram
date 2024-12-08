@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Reflection;
 using System.Numerics;
 using System.Windows.Input;
+using System.Diagnostics;
 
 namespace ChromaticityDiagram
 {
@@ -18,59 +19,91 @@ namespace ChromaticityDiagram
         public static readonly (double x, double y) DisplayBegin = (70, 70);
         public static readonly (double x, double y) DisplayEnd = (410, 440);
         public static readonly (double x, double y) Begin = (380, 1.8);
-        public static readonly (double x, double y) End = (780, 0);
+        public static readonly (double x, double y) End = (740, 0);
 
-        private List<ControlPoint> _controlPoints;
+        public (double X, double Y, double Z) CIE_Coords { get; private set; }
+
+        public List<ControlPoint> ControlPoints { get; private set; }
         private Canvas _canvas;
+        private Dictionary<int, (double x, double y, double z)> _data;
 
-        public Bezier(Canvas canvas)
+        public event EventHandler? RedrawEvent;
+        public event EventHandler? CIERecalculated;
+
+        public Bezier(Canvas canvas, Dictionary<int, (double x, double y, double z)> data)
         {
-            _controlPoints = new List<ControlPoint>();
-            ControlPoint p0 = ControlPoint.FromPoint(new Point(380, 1), this);
-            ControlPoint p1 = ControlPoint.FromPoint(new Point(780, 1), this);
+            ControlPoints = new List<ControlPoint>();
+            ControlPoint p0 = ControlPoint.FromPoint(new Point(Begin.x, 1), this);
+            ControlPoint p1 = ControlPoint.FromPoint(new Point(End.x, 1), this);
             p0.MouseRightButtonDown += ControlPoint_MouseRightButtonDown;
             p1.MouseRightButtonDown += ControlPoint_MouseRightButtonDown;
-            _controlPoints.Add(p0);
-            _controlPoints.Add(p1);
+            ControlPoints.Add(p0);
+            ControlPoints.Add(p1);
             canvas.Children.Add(p0);
             canvas.Children.Add(p1);
             _canvas = canvas;
+            Canvas.SetZIndex(this, 1);
+
+            StrokeThickness = 2;
+            Stroke = Brushes.Black;
+
+            _data = data;
+            CIE_Coords = (1, 1, 1);
+        }
+
+        public void Redraw()
+        {
+            InvalidateVisual();
+            RedrawEvent?.Invoke(this, EventArgs.Empty);
         }
 
         public void AddControlPoint(Point point)
         {
             var controlPoint = ControlPoint.FromDisplayPoint(point, this);
             controlPoint.MouseRightButtonDown += ControlPoint_MouseRightButtonDown;
-            _controlPoints.Add(controlPoint);
-            _controlPoints = _controlPoints.OrderBy(p => p.X).ToList();
+            ControlPoints.Add(controlPoint);
+            ControlPoints = ControlPoints.OrderBy(p => p.X).ToList();
             _canvas.Children.Add(controlPoint);
-            InvalidateVisual();
+            Redraw();
         }
 
         private void ControlPoint_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (_controlPoints.Count <= 2) return;
+            if (ControlPoints.Count <= 2) return;
             ControlPoint control = (ControlPoint)sender;
-            _controlPoints.Remove(control);
+            ControlPoints.Remove(control);
             _canvas.Children.Remove(control);
-            InvalidateVisual();
+            Redraw();
         }
 
         public (double x1, double x2) GetControlPointMoveBounds(ControlPoint control)
         {
-            int index = _controlPoints.IndexOf(control);
+            int index = ControlPoints.IndexOf(control);
             if (index == 0)
             {
-                return (DisplayBegin.x , _controlPoints[1].DisplayPoint.X);
+                return (DisplayBegin.x , ControlPoints[1].DisplayPoint.X);
             }
-            else if (index == _controlPoints.Count - 1)
+            else if (index == ControlPoints.Count - 1)
             {
-                return (_controlPoints[^2].DisplayPoint.X, DisplayEnd.x);
+                return (ControlPoints[^2].DisplayPoint.X, DisplayEnd.x);
             }
             else
             {
-                return (_controlPoints[index - 1].DisplayPoint.X, _controlPoints[index + 1].DisplayPoint.X);
+                return (ControlPoints[index - 1].DisplayPoint.X, ControlPoints[index + 1].DisplayPoint.X);
             }
+        }
+
+        private static double GetBinCoeff(long N, long K)
+        {
+            long r = 1;
+            long d;
+            if (K > N) return 0;
+            for (d = 1; d <= K; d++)
+            {
+                r *= N--;
+                r /= d;
+            }
+            return r;
         }
 
         protected override Geometry DefiningGeometry
@@ -78,21 +111,47 @@ namespace ChromaticityDiagram
             get
             {
                 GeometryGroup geometryGroup = new();
-                StrokeThickness = 2;
-                Stroke = Brushes.Black;
 
-                for (int i = 0; i < _controlPoints.Count - 1; i++)
+                Point lastPoint = ControlPoints[0].DisplayPoint;
+
+                double d = 1.0 / 5.0;
+                double CIE_X = 0, CIE_Y = 0, CIE_Z = 0;
+
+                for (double t = d; t < 1; t += d)
                 {
-                    ControlPoint p0 = _controlPoints[i];
-                    ControlPoint p1 = _controlPoints[i + 1];
-                    geometryGroup.Children.Add(new LineGeometry(p0.DisplayPoint, p1.DisplayPoint));
+                    double x = 0;
+                    double y = 0;
+                    double displayX = 0;
+                    double displayY = 0;
+                    for (int i = 0; i < ControlPoints.Count; i++)
+                    {
+                        double coeff = GetBinCoeff(ControlPoints.Count - 1, i) * Math.Pow(1 - t, ControlPoints.Count - 1 - i) * Math.Pow(t, i);
+                        displayX += coeff * ControlPoints[i].DisplayPoint.X;
+                        displayY += coeff * ControlPoints[i].DisplayPoint.Y;
+
+                        x += coeff * ControlPoints[i].Point.X;
+                        y += coeff * ControlPoints[i].Point.Y; 
+                    }
+
+                    CIE_X += y * _data[(int)Math.Round(x)].x * (x - lastPoint.X);
+                    CIE_Y += y * _data[(int)Math.Round(x)].y * (x - lastPoint.X);
+                    CIE_Z += y * _data[(int)Math.Round(x)].z * (x - lastPoint.X);
+
+                    Point newPoint = new Point(displayX, displayY);
+                    //geometryGroup.Children.Add(new LineGeometry(newPoint, lastPoint));
+                    geometryGroup.Children.Add(new EllipseGeometry(newPoint, 1, 1));
+                    lastPoint = newPoint;
                 }
 
-                ControlPoint start = _controlPoints[0];
-                geometryGroup.Children.Add(new LineGeometry(start.DisplayPoint, new Point(start.DisplayPoint.X, DisplayEnd.y)));
+                double Px = ControlPoints[^1].Point.X;
+                double Py = ControlPoints[^1].Point.Y;
+                CIE_X += Py * _data[(int)Math.Round(Px)].x * (Px - lastPoint.X);
+                CIE_Y += Py * _data[(int)Math.Round(Px)].y * (Px - lastPoint.X);
+                CIE_Z += Py * _data[(int)Math.Round(Px)].z * (Px - lastPoint.X);
+                CIE_Coords = (CIE_X, CIE_Y, CIE_Z);
+                CIERecalculated?.Invoke(this, EventArgs.Empty);
 
-                ControlPoint end = _controlPoints[^1];
-                geometryGroup.Children.Add(new LineGeometry(end.DisplayPoint, new Point(end.DisplayPoint.X, DisplayEnd.y)));
+                geometryGroup.Children.Add(new LineGeometry(ControlPoints[^1].DisplayPoint, lastPoint));
 
                 return geometryGroup;
             }

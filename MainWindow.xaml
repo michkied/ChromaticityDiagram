@@ -12,7 +12,16 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Canvas x:Name="spectrumCanvas" Grid.Column="0" Background="White" MouseLeftButtonDown="spectrumCanvas_MouseLeftButtonDown"/>
+        <Canvas x:Name="spectrumCanvas" Grid.Column="0" Background="White" MouseLeftButtonDown="spectrumCanvas_MouseLeftButtonDown">
+            <Line X1="40" Y1="40" X2="40" Y2="440" Stroke="Black" StrokeThickness="2"/>
+            <Line X1="40" Y1="40" X2="35" Y2="50" Stroke="Black" StrokeThickness="2"/>
+            <Line X1="40" Y1="40" X2="45" Y2="50" Stroke="Black" StrokeThickness="2"/>
+            
+            <Line X1="40" Y1="440" X2="440" Y2="440" Stroke="Black" StrokeThickness="2"/>
+            <Line X1="440" Y1="440" X2="430" Y2="435" Stroke="Black" StrokeThickness="2"/>
+            <Line X1="440" Y1="440" X2="430" Y2="445" Stroke="Black" StrokeThickness="2"/>
+            
+        </Canvas>
         <Canvas x:Name="diagramCanvas" Grid.Column="1" Background="AliceBlue">
             <Image Height="450" Width="450" Canvas.Left="20" Canvas.Top="20">
                 <Image.Source>
