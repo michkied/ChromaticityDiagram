@@ -29,6 +29,7 @@ namespace ChromaticityDiagram
                 double CIE_Z = item.Value.z;
 
                 if (CIE_X + CIE_Y + CIE_Z == 0) continue;
+                if (item.Key < Bezier.Begin.y || item.Key > 738) continue;
 
                 double x = CIE_X / (CIE_X + CIE_Y + CIE_Z);
                 double y = CIE_Y / (CIE_X + CIE_Y + CIE_Z);
@@ -55,8 +56,8 @@ namespace ChromaticityDiagram
 
         public static Point GetDisplayDiagramCoordinates(double x, double y)
         {
-            double dispX = x * 441 + 80;
-            double dispY = 440 - y * 441 - 15;
+            double dispX = x * 433 + 80;
+            double dispY = 433 - y * 433 - 16;
 
             return new Point(dispX, dispY);
         }

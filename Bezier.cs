@@ -115,7 +115,7 @@ namespace ChromaticityDiagram
                 Point lastDisplayPoint = ControlPoints[0].DisplayPoint;
                 Point lastPoint = ControlPoints[0].Point;
 
-                double d = 1.0 / 1000.0;
+                double d = 1.0 / 500.0;
                 double CIE_X = 0, CIE_Y = 0, CIE_Z = 0;
 
                 for (double t = d; t < 1; t += d)

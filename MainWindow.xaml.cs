@@ -34,11 +34,6 @@ namespace ChromaticityDiagram
                     }
                     string[] parts = line.Split(';');
                     int wl = int.Parse(parts[0]);
-                    if (wl < Bezier.Begin.y || wl > Bezier.End.x)
-                    {
-                        line = file.ReadLine();
-                        continue;
-                    }
                     double x = double.Parse(parts[1]);
                     double y = double.Parse(parts[2]);
                     double z = double.Parse(parts[3]);
