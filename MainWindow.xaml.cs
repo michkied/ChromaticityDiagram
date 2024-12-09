@@ -43,7 +43,7 @@ namespace ChromaticityDiagram
             }
 
             _bezier = new Bezier(spectrumCanvas, data);
-            _diagram = new Diagram(diagramCanvas, _bezier, data);
+            _diagram = new Diagram(diagramCanvas, _bezier, data, sRGBRect, WideGamutRect);
 
             spectrumCanvas.Children.Add(_bezier);
             spectrumCanvas.Children.Add(new BezierLines(_bezier));

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ChromaticityDiagram"
         mc:Ignorable="d"
-        Title="Chromaticity Diagram" Height="525" Width="1000">
+        Title="MainWindow" Height="525" Width="1000">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -20,9 +20,16 @@
             <Line X1="40" Y1="440" X2="440" Y2="440" Stroke="Black" StrokeThickness="2"/>
             <Line X1="440" Y1="440" X2="430" Y2="435" Stroke="Black" StrokeThickness="2"/>
             <Line X1="440" Y1="440" X2="430" Y2="445" Stroke="Black" StrokeThickness="2"/>
-            
         </Canvas>
+        
         <Canvas x:Name="diagramCanvas" Grid.Column="1" Background="AliceBlue">
+            <TextBlock Text="sRGB" Canvas.Top="10" Canvas.Right="80"/>
+            <Line X1="0" Y1="0" X2="50" Y2="20" Canvas.Top="10" Canvas.Right="20" Stroke="Red"/>
+            <Rectangle x:Name="sRGBRect" Height="20" Width="50" Canvas.Top="10" Canvas.Right="20" Fill="Black" Stroke="Black"/>
+
+            <TextBlock Text="Wide-gamut" Canvas.Top="40" Canvas.Right="80"/>
+            <Line X1="0" Y1="0" X2="50" Y2="20" Canvas.Top="40" Canvas.Right="20" Stroke="Red"/>
+            <Rectangle x:Name="WideGamutRect" Height="20" Width="50" Canvas.Top="40" Canvas.Right="20" Fill="Red" Stroke="Black"/>
             <Image Height="450" Width="450" Canvas.Left="20" Canvas.Top="20">
                 <Image.Source>
                     <BitmapImage UriSource="pack://application:,,,/resources/diagram.png"/>

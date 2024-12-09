@@ -44,7 +44,7 @@ namespace ChromaticityDiagram
             _canvas = canvas;
             Canvas.SetZIndex(this, 1);
 
-            StrokeThickness = 2;
+            StrokeThickness = 3;
             Stroke = Brushes.Black;
 
             _data = data;
@@ -155,6 +155,12 @@ namespace ChromaticityDiagram
                 CIERecalculated?.Invoke(this, EventArgs.Empty);
 
                 geometryGroup.Children.Add(new LineGeometry(ControlPoints[^1].DisplayPoint, lastDisplayPoint));
+
+                geometryGroup.Children.Add(
+                    new LineGeometry(new Point(DisplayBegin.x, DisplayEnd.y - 1), new Point(ControlPoints[0].DisplayPoint.X, DisplayEnd.y - 1)));
+
+                geometryGroup.Children.Add(
+                    new LineGeometry(new Point(DisplayEnd.x, DisplayEnd.y - 1), new Point(ControlPoints[^1].DisplayPoint.X, DisplayEnd.y - 1)));
 
                 return geometryGroup;
             }
